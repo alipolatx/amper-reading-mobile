@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "Amper Tracker",
-    "slug": "amper-reading-mobile",
+    "slug": "amper-tracker",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -28,6 +28,12 @@
     "web": {
       "favicon": "./assets/favicon.png"
     },
-    "plugins": []
+    "plugins": [],
+    "extra": {
+      "eas": {
+        "projectId": "2c56e594-7d07-4cdf-a697-31f57d0c2265"
+      }
+    },
+    "owner": "alipolat58"
   }
 }

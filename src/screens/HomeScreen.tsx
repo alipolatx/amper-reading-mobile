@@ -57,7 +57,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation, route }) => {
   const [error, setError] = useState<string | null>(null);
 
   // Auto-refresh interval (60 seconds)
-  const REFRESH_INTERVAL = 10000;
+  const REFRESH_INTERVAL = 60000;
 
   const fetchData = useCallback(async (showLoading = true) => {
     if (showLoading) {

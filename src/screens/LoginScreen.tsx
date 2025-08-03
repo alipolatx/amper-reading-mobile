@@ -76,8 +76,8 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
       // Save username to storage
       await storageService.saveUsername(username.trim());
       
-      // Navigate to home screen
-      navigation.replace('Home', { username: username.trim() });
+      // Navigate to products screen
+      navigation.replace('Products');
       
     } catch (error) {
       console.error('Login error:', error);

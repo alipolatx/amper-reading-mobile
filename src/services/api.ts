@@ -1,5 +1,5 @@
 import axios, { AxiosInstance } from 'axios';
-import { AmperReading, UserStats, ApiResponse } from '../types';
+import { AmperReading, UserStats, ApiResponse, Product } from '../types';
 import { ENV } from '../config/env';
 
 class ApiService {
@@ -51,6 +51,22 @@ class ApiService {
     }
   }
 
+  // Get all products
+  async getProducts(): Promise<Product[]> {
+    try {
+      const response = await this.api.get<ApiResponse<Product[]>>('/api/products');
+      
+      if (!response.data.success) {
+        throw new Error(response.data.message || 'Failed to fetch products');
+      }
+
+      return response.data.data;
+    } catch (error) {
+      console.error('Error fetching products:', error);
+      throw error;
+    }
+  }
+
   // Get user statistics
   async getUserStats(username: string): Promise<UserStats> {
     try {
@@ -83,6 +99,22 @@ class ApiService {
     }
   }
 
+  // Get readings with time range filter
+  async getReadingsWithTimeRange(username: string, timeRange: string): Promise<AmperReading[]> {
+    try {
+      const response = await this.api.get<ApiResponse<AmperReading[]>>(`/api/user/${username}/readings?timeRange=${timeRange}`);
+      
+      if (!response.data.success) {
+        throw new Error(response.data.message || 'Failed to fetch readings with time range');
+      }
+
+      return response.data.data;
+    } catch (error) {
+      console.error('Error fetching readings with time range:', error);
+      throw error;
+    }
+  }
+
   // Get all readings with pagination
   async getAllReadings(username: string, limit: number = 50, page: number = 1): Promise<{
     readings: AmperReading[];
@@ -94,6 +126,7 @@ class ApiService {
     };
   }> {
     try {
+      const endpoint = username ? `/api/user/${username}/all?limit=${limit}&page=${page}` : `/api/readings?limit=${limit}&page=${page}`;
       const response = await this.api.get<ApiResponse<{
         readings: AmperReading[];
         pagination: {
@@ -102,7 +135,7 @@ class ApiService {
           total: number;
           pages: number;
         };
-      }>>(`/api/user/${username}/all?limit=${limit}&page=${page}`);
+      }>>(endpoint);
       
       if (!response.data.success) {
         throw new Error(response.data.message || 'Failed to fetch all readings');
@@ -111,6 +144,68 @@ class ApiService {
       return response.data.data;
     } catch (error) {
       console.error('Error fetching all readings:', error);
+      throw error;
+    }
+  }
+
+  // Get users for a specific product with stats
+  async getProductUsers(productId: string): Promise<Array<{
+    username: string;
+    readingCount: number;
+    lastReading?: string;
+  }>> {
+    try {
+      const response = await this.api.get<ApiResponse<{
+        product: Product;
+        users: Array<{
+          username: string;
+          totalReadings: number;
+          averageAmper: number;
+          latestReading?: any;
+        }>;
+      }>>(`/api/products/${productId}/users`);
+      
+      if (!response.data.success) {
+        throw new Error(response.data.message || 'Failed to fetch product users');
+      }
+
+      // Transform the response to match expected format
+      return response.data.data.users.map(user => ({
+        username: user.username,
+        readingCount: user.totalReadings,
+        lastReading: user.latestReading?.timestamp
+      }));
+    } catch (error) {
+      console.error('Error fetching product users:', error);
+      throw error;
+    }
+  }
+
+  // Get readings for a specific product and user
+  async getProductUserReadings(productId: string, username: string, timeRange: string = '24h'): Promise<AmperReading[]> {
+    try {
+      console.log(`🔍 Fetching readings for product: ${productId}, user: ${username}, timeRange: ${timeRange}`);
+      const response = await this.api.get<ApiResponse<{
+        product: Product;
+        username: string;
+        readings: AmperReading[];
+        pagination: {
+          page: number;
+          limit: number;
+          total: number;
+          pages: number;
+        };
+      }>>(`/api/products/${productId}/users/${username}?timeRange=${timeRange}`);
+      
+      console.log('📊 Product user readings response:', response.data);
+      
+      if (!response.data.success) {
+        throw new Error(response.data.message || 'Failed to fetch product user readings');
+      }
+
+      return response.data.data.readings;
+    } catch (error) {
+      console.error('❌ Error fetching product user readings:', error);
       throw error;
     }
   }

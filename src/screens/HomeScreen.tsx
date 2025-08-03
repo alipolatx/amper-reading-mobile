@@ -10,13 +10,13 @@ import {
   RefreshControl,
   Alert,
   TouchableOpacity,
+  Modal,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RouteProp } from '@react-navigation/native';
-import { RootStackParamList, UserStats, AmperReading } from '../types';
+import { RootStackParamList, UserStats, AmperReading, Product } from '../types';
 import { apiService } from '../services/api';
-import { storageService } from '../utils/storage';
 import CircularProgress from '../components/CircularProgress';
 
 // Table Header Row
@@ -27,13 +27,49 @@ const TableHeader = () => (
   </View>
 );
 
+// Helper function to get amper status and style
+const getAmperStatus = (amper: number) => {
+  if (amper > 22) {
+    return null; // Don't show
+  } else if (amper > 5) {
+    return { status: 'max', style: 'maxAmperText' };
+  } else if (amper >= 3) {
+    return { status: 'mid', style: 'midAmperText' };
+  } else if (amper >= 1) {
+    return { status: 'min', style: 'minAmperText' };
+  } else {
+    return { status: 'off', style: 'offAmperText' };
+  }
+};
+
+// Helper function to get time range label
+const getTimeRangeLabel = (range: string) => {
+  switch (range) {
+    case '1h': return 'Son 1 Saat';
+    case '6h': return 'Son 6 Saat';
+    case '12h': return 'Son 12 Saat';
+    case '24h': return 'Son 24 Saat';
+    case '7d': return 'Son 7 Gün';
+    case '30d': return 'Son 30 Gün';
+    default: return 'Son 24 Saat';
+  }
+};
+
 // FlatList Table Row
 const TableRow = ({ item }: { item: AmperReading }) => {
-  const isHighAmper = item.amper >= 1.0;
+  const amperStatus = getAmperStatus(item.amper);
+  
+  if (!amperStatus) {
+    return null; // Don't render if amper > 22
+  }
+  
   return (
     <View style={styles.tableRow}>
       <Text style={styles.tableCell}>{new Date(item.timestamp).toLocaleString('tr-TR', { hour12: false })}</Text>
-      <Text style={[styles.tableCell, isHighAmper ? styles.highAmperText : styles.lowAmperText]}>{item.amper.toFixed(1)}A</Text>
+      <View style={styles.amperCell}>
+        <Text style={[styles.tableCell, styles[amperStatus.style as keyof typeof styles]]}>{item.amper.toFixed(1)}A</Text>
+        <Text style={[styles.statusText, styles[amperStatus.style as keyof typeof styles]]}>{amperStatus.status.toUpperCase()}</Text>
+      </View>
     </View>
   );
 };
@@ -47,7 +83,7 @@ interface HomeScreenProps {
 }
 
 const HomeScreen: React.FC<HomeScreenProps> = ({ navigation, route }) => {
-  const { username } = route.params;
+  const { username, product, selectedSensor } = route.params;
   
   const [stats, setStats] = useState<UserStats | null>(null);
   const [recentReadings, setRecentReadings] = useState<AmperReading[]>([]);
@@ -55,6 +91,8 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation, route }) => {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [lastSync, setLastSync] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [showTimeFilter, setShowTimeFilter] = useState(false);
+  const [timeRange, setTimeRange] = useState<string>('24h');
 
   // Auto-refresh interval (60 seconds)
   const REFRESH_INTERVAL = 60000;
@@ -66,14 +104,34 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation, route }) => {
     setError(null);
 
     try {
-      // Fetch stats and recent readings in parallel
-      const [statsData, readingsData] = await Promise.all([
-        apiService.getUserStats(username),
-        apiService.getRecentReadings(username),
-      ]);
+      // Fetch readings for the specific product and user
+      const readingsData = await apiService.getProductUserReadings(product._id, username, timeRange);
 
-      setStats(statsData);
-      setRecentReadings(readingsData);
+      // Filter out readings over 22A
+      const filteredReadings = readingsData.filter((reading: AmperReading) => reading.amper <= 22);
+      
+      // Calculate stats from filtered readings using the 4-tier system
+      const totalReadings = filteredReadings.length;
+      const offCount = filteredReadings.filter(r => r.amper <= 1).length;
+      const minCount = filteredReadings.filter(r => r.amper >= 1 && r.amper < 3).length;
+      const midCount = filteredReadings.filter(r => r.amper >= 3 && r.amper < 5).length;
+      const maxCount = filteredReadings.filter(r => r.amper >= 5 && r.amper <= 22).length;
+      
+      // Percentage of active readings (min + mid + max)
+      const activeCount = minCount + midCount + maxCount;
+      const percentage = totalReadings > 0 ? (activeCount / totalReadings) * 100 : 0;
+      
+      setStats({
+        totalReadings,
+        highAmpCount: activeCount,
+        lowAmpCount: offCount,
+        percentage,
+        offCount,
+        minCount,
+        midCount,
+        maxCount
+      });
+      setRecentReadings(filteredReadings);
       setLastSync(new Date().toISOString());
 
     } catch (error) {
@@ -90,32 +148,13 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation, route }) => {
       setIsLoading(false);
       setIsRefreshing(false);
     }
-  }, [username]);
+  }, [product._id, username, timeRange]);
 
   const handleRefresh = useCallback(() => {
     setIsRefreshing(true);
     fetchData(false);
   }, [fetchData]);
 
-  const handleLogout = async () => {
-    Alert.alert(
-      'Çıkış Yap',
-      'Çıkış yapmak istediğinizden emin misiniz?',
-      [
-        { text: 'İptal', style: 'cancel' },
-        {
-          text: 'Çıkış Yap',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await storageService.removeUsername();
-              navigation.replace('Login');
-            } catch (error) {}
-          },
-        },
-      ]
-    );
-  };
 
   // Initial data fetch
   useEffect(() => {
@@ -132,31 +171,35 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation, route }) => {
     return () => clearInterval(interval);
   }, [fetchData, isLoading, isRefreshing]);
 
-  // Save last sync time
-  useEffect(() => {
-    if (lastSync) {
-      storageService.saveLastSync(lastSync);
-    }
-  }, [lastSync]);
 
   // Header + Progress + Sync Info + Error + Table Header
   const renderHeader = () => (
     <>
       <View style={styles.header}>
+        <TouchableOpacity 
+          style={styles.backButton}
+          onPress={() => navigation.goBack()}
+        >
+          <Text style={styles.backButtonText}>‹ Geri</Text>
+        </TouchableOpacity>
         <View style={styles.headerContent}>
           <Text style={styles.headerTitle}>Amper Tracker</Text>
-          <Text style={styles.headerSubtitle}>Hoş geldin, {username}</Text>
+          <Text style={styles.headerSubtitle}>Kullanıcı: {username}</Text>
         </View>
-        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout} activeOpacity={0.7}>
-          <Text style={styles.logoutButtonText}>Çıkış</Text>
-        </TouchableOpacity>
+        <View style={styles.placeholder} />
+      </View>
+      <View style={styles.contextInfo}>
+        <Text style={styles.contextProduct}>Ürün: {product.name}</Text>
+        <Text style={styles.contextSensor}>Sensör: {selectedSensor}</Text>
       </View>
       <View style={styles.progressBarWrapper}>
         <CircularProgress
           percentage={stats?.percentage || 0}
           totalReadings={stats?.totalReadings || 0}
-          highAmpCount={stats?.highAmpCount || 0}
-          lowAmpCount={stats?.lowAmpCount || 0}
+          offCount={stats?.offCount || 0}
+          minCount={stats?.minCount || 0}
+          midCount={stats?.midCount || 0}
+          maxCount={stats?.maxCount || 0}
           size={140}
         />
       </View>
@@ -170,8 +213,18 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation, route }) => {
           <Text style={styles.errorText}>{error}</Text>
         </View>
       )}
+      <View style={styles.filterSection}>
+        <TouchableOpacity
+          style={styles.filterButton}
+          onPress={() => setShowTimeFilter(true)}
+          activeOpacity={0.7}
+        >
+          <Text style={styles.filterButtonText}>Zaman Filtresi: {getTimeRangeLabel(timeRange)}</Text>
+          <Text style={styles.filterArrow}>▼</Text>
+        </TouchableOpacity>
+      </View>
       <View style={styles.tableSection}>
-        <Text style={styles.title}>Son 24 Saat Verileri</Text>
+        <Text style={styles.title}>Amper Verileri</Text>
         <Text style={styles.subtitle}>{recentReadings.length} okuma bulundu</Text>
         <View style={styles.tableRowHeader}>
           <Text style={[styles.tableCell, styles.headerCell]}>Tarih-Saat</Text>
@@ -179,6 +232,41 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation, route }) => {
         </View>
       </View>
     </>
+  );
+
+  const handleTimeRangeSelect = (range: string) => {
+    setTimeRange(range);
+    setShowTimeFilter(false);
+    fetchData();
+  };
+
+  const timeRangeOptions = [
+    { value: '1h', label: 'Son 1 Saat' },
+    { value: '6h', label: 'Son 6 Saat' },
+    { value: '12h', label: 'Son 12 Saat' },
+    { value: '24h', label: 'Son 24 Saat' },
+    { value: '7d', label: 'Son 7 Gün' },
+    { value: '30d', label: 'Son 30 Gün' },
+  ];
+
+  const renderTimeRangeOption = ({ item }: { item: { value: string; label: string } }) => (
+    <TouchableOpacity
+      style={[
+        styles.timeRangeOption,
+        timeRange === item.value && styles.selectedTimeRangeOption
+      ]}
+      onPress={() => handleTimeRangeSelect(item.value)}
+    >
+      <Text style={[
+        styles.timeRangeOptionText,
+        timeRange === item.value && styles.selectedTimeRangeOptionText
+      ]}>
+        {item.label}
+      </Text>
+      {timeRange === item.value && (
+        <Text style={styles.checkmark}>✓</Text>
+      )}
+    </TouchableOpacity>
   );
 
   return (
@@ -200,13 +288,42 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation, route }) => {
         ListEmptyComponent={
           !isLoading ? (
             <View style={styles.emptyContainer}>
-              <Text style={styles.emptyText}>Son 24 saatte veri bulunamadı</Text>
+              <Text style={styles.emptyText}>Seçilen zaman aralığında veri bulunamadı</Text>
               <Text style={styles.emptySubText}>ESP32 cihazından veri gelmeye başladığında burada görünecek</Text>
             </View>
           ) : null
         }
         contentContainerStyle={styles.listContent}
       />
+
+      <Modal
+        visible={showTimeFilter}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setShowTimeFilter(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Zaman Aralığı Seç</Text>
+              <TouchableOpacity
+                onPress={() => setShowTimeFilter(false)}
+                style={styles.closeButton}
+              >
+                <Text style={styles.closeButtonText}>✕</Text>
+              </TouchableOpacity>
+            </View>
+            
+            <FlatList
+              data={timeRangeOptions}
+              renderItem={renderTimeRangeOption}
+              keyExtractor={(item) => item.value}
+              showsVerticalScrollIndicator={false}
+              style={styles.timeRangeList}
+            />
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -232,11 +349,37 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 4,
   },
-  headerContent: { flex: 1 },
+  backButton: {
+    padding: 8,
+  },
+  backButtonText: {
+    fontSize: 18,
+    color: '#4CAF50',
+    fontWeight: '600',
+  },
+  headerContent: { flex: 1, alignItems: 'center' },
   headerTitle: { fontSize: 20, fontWeight: 'bold', color: '#333' },
   headerSubtitle: { fontSize: 14, color: '#666', marginTop: 2 },
-  logoutButton: { backgroundColor: '#FF6B6B', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 8 },
-  logoutButtonText: { color: '#fff', fontSize: 14, fontWeight: '600' },
+  placeholder: {
+    width: 50,
+  },
+  contextInfo: {
+    backgroundColor: '#E8F5E8',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E0E0E0',
+  },
+  contextProduct: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#2E7D32',
+    marginBottom: 4,
+  },
+  contextSensor: {
+    fontSize: 14,
+    color: '#4CAF50',
+  },
   syncInfo: { alignItems: 'center', marginBottom: 8 },
   syncText: { fontSize: 12, color: '#999' },
   errorContainer: { backgroundColor: '#FFEBEE', marginHorizontal: 16, marginBottom: 8, padding: 12, borderRadius: 8, borderLeftWidth: 4, borderLeftColor: '#F44336' },
@@ -304,15 +447,120 @@ const styles = StyleSheet.create({
     paddingBottom: 48,
     backgroundColor: '#F5F5F5',
   },
-  highAmperText: {
-    color: '#4CAF50',
-    fontWeight: '600',
-    textAlign: 'right',
+  amperCell: {
+    flex: 1,
+    alignItems: 'flex-end',
   },
-  lowAmperText: {
+  statusText: {
+    fontSize: 10,
+    fontWeight: '700',
+    marginTop: 2,
+  },
+  offAmperText: {
+    color: '#9E9E9E',
+    fontWeight: '600',
+  },
+  minAmperText: {
     color: '#FF9800',
     fontWeight: '600',
-    textAlign: 'right',
+  },
+  midAmperText: {
+    color: '#2196F3',
+    fontWeight: '600',
+  },
+  maxAmperText: {
+    color: '#4CAF50',
+    fontWeight: '600',
+  },
+  filterSection: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: '#F5F5F5',
+  },
+  filterButton: {
+    backgroundColor: '#fff',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  filterButtonText: {
+    fontSize: 16,
+    color: '#333',
+    fontWeight: '500',
+  },
+  filterArrow: {
+    fontSize: 12,
+    color: '#666',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    maxHeight: '50%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E0E0E0',
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  closeButton: {
+    padding: 8,
+  },
+  closeButtonText: {
+    fontSize: 18,
+    color: '#999',
+  },
+  timeRangeList: {
+    padding: 20,
+  },
+  timeRangeOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 8,
+    backgroundColor: '#F8F9FA',
+  },
+  selectedTimeRangeOption: {
+    backgroundColor: '#E8F5E8',
+    borderWidth: 2,
+    borderColor: '#4CAF50',
+  },
+  timeRangeOptionText: {
+    fontSize: 16,
+    color: '#333',
+    flex: 1,
+  },
+  selectedTimeRangeOptionText: {
+    color: '#4CAF50',
+    fontWeight: '600',
+  },
+  checkmark: {
+    fontSize: 16,
+    color: '#4CAF50',
+    fontWeight: 'bold',
   },
 });
 

@@ -11,12 +11,14 @@ import {
   FlatList,
   Alert,
   RefreshControl,
+  KeyboardAvoidingView,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RouteProp } from '@react-navigation/native';
 import { RootStackParamList } from '../types';
 import { apiService } from '../services/api';
+import { storageService } from '../utils/storage';
 
 type UserSelectionNavigationProp = NativeStackNavigationProp<RootStackParamList, 'UserSelection'>;
 type UserSelectionRouteProp = RouteProp<RootStackParamList, 'UserSelection'>;
@@ -83,6 +85,9 @@ const UserSelectionScreen: React.FC<UserSelectionScreenProps> = ({ navigation, r
 
     setIsSaving(true);
     try {
+      // Save username to storage for future use
+      await storageService.saveUsername(trimmedUsername);
+      
       navigation.navigate('Home', { 
         username: trimmedUsername, 
         product, 
@@ -97,6 +102,9 @@ const UserSelectionScreen: React.FC<UserSelectionScreenProps> = ({ navigation, r
 
   const handleUserPress = async (username: string) => {
     try {
+      // Save username to storage for future use
+      await storageService.saveUsername(username);
+      
       navigation.navigate('Home', { 
         username, 
         product, 
@@ -157,6 +165,9 @@ const UserSelectionScreen: React.FC<UserSelectionScreenProps> = ({ navigation, r
             onChangeText={setNewUsername}
             autoCapitalize="none"
             autoCorrect={false}
+            blurOnSubmit={false}
+            returnKeyType="done"
+            onSubmitEditing={handleSaveUsername}
           />
           <TouchableOpacity
             style={[styles.saveButton, !newUsername.trim() && styles.saveButtonDisabled]}
@@ -183,11 +194,17 @@ const UserSelectionScreen: React.FC<UserSelectionScreenProps> = ({ navigation, r
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar style="dark" />
-      <FlatList
+      <KeyboardAvoidingView 
+        style={styles.keyboardAvoidingView}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
+        <FlatList
         data={userGroups}
         renderItem={renderUserItem}
         keyExtractor={(item) => item.username}
         ListHeaderComponent={renderHeader}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
         refreshControl={
           <RefreshControl
             refreshing={isRefreshing}
@@ -207,6 +224,7 @@ const UserSelectionScreen: React.FC<UserSelectionScreenProps> = ({ navigation, r
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
       />
+      </KeyboardAvoidingView>
       {error && (
         <View style={styles.errorContainer}>
           <Text style={styles.errorText}>{error}</Text>
@@ -221,6 +239,9 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F5F5F5',
     paddingTop: Platform.OS === 'android' ? RNStatusBar.currentHeight : 0,
+  },
+  keyboardAvoidingView: {
+    flex: 1,
   },
   header: {
     backgroundColor: '#fff',

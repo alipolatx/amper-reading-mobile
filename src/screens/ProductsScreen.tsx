@@ -16,7 +16,10 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList, Product } from '../types';
 import { apiService } from '../services/api';
 
-type ProductsScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Products'>;
+type ProductsScreenNavigationProp = NativeStackNavigationProp<
+  RootStackParamList,
+  'Products'
+>;
 
 interface ProductsScreenProps {
   navigation: ProductsScreenNavigationProp;
@@ -57,7 +60,6 @@ const ProductsScreen: React.FC<ProductsScreenProps> = ({ navigation }) => {
     setIsRefreshing(true);
     fetchProducts(false);
   }, [fetchProducts]);
-
 
   const handleProductPress = (product: Product) => {
     navigation.navigate('ProductDetail', { product });
@@ -101,7 +103,9 @@ const ProductsScreen: React.FC<ProductsScreenProps> = ({ navigation }) => {
     <View style={styles.header}>
       <View style={styles.headerContent}>
         <Text style={styles.headerTitle}>Ürünler</Text>
-        <Text style={styles.headerSubtitle}>Amper ölçümü yapılacak ürünü seçin</Text>
+        <Text style={styles.headerSubtitle}>
+          Amper ölçümü yapılacak ürünü seçin
+        </Text>
       </View>
     </View>
   );
@@ -126,7 +130,9 @@ const ProductsScreen: React.FC<ProductsScreenProps> = ({ navigation }) => {
           !isLoading ? (
             <View style={styles.emptyContainer}>
               <Text style={styles.emptyText}>Henüz ürün bulunamadı</Text>
-              <Text style={styles.emptySubText}>Ürünler eklenmeye başladığında burada görünecek</Text>
+              <Text style={styles.emptySubText}>
+                Ürünler eklenmeye başladığında burada görünecek
+              </Text>
             </View>
           ) : null
         }

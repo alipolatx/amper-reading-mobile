@@ -20,7 +20,10 @@ import { RootStackParamList } from '../types';
 import { apiService } from '../services/api';
 import { storageService } from '../utils/storage';
 
-type UserSelectionNavigationProp = NativeStackNavigationProp<RootStackParamList, 'UserSelection'>;
+type UserSelectionNavigationProp = NativeStackNavigationProp<
+  RootStackParamList,
+  'UserSelection'
+>;
 type UserSelectionRouteProp = RouteProp<RootStackParamList, 'UserSelection'>;
 
 interface UserSelectionScreenProps {
@@ -34,7 +37,10 @@ interface UserGroup {
   lastReading?: string;
 }
 
-const UserSelectionScreen: React.FC<UserSelectionScreenProps> = ({ navigation, route }) => {
+const UserSelectionScreen: React.FC<UserSelectionScreenProps> = ({
+  navigation,
+  route,
+}) => {
   const { product, selectedSensor } = route.params;
   const [newUsername, setNewUsername] = useState('');
   const [userGroups, setUserGroups] = useState<UserGroup[]>([]);
@@ -43,23 +49,31 @@ const UserSelectionScreen: React.FC<UserSelectionScreenProps> = ({ navigation, r
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchUserGroups = useCallback(async (showLoading = true) => {
-    if (showLoading) {
-      setIsLoading(true);
-    }
-    setError(null);
+  const fetchUserGroups = useCallback(
+    async (showLoading = true) => {
+      if (showLoading) {
+        setIsLoading(true);
+      }
+      setError(null);
 
-    try {
-      const users = await apiService.getProductUsersBySensor(product._id, selectedSensor);
-      setUserGroups(users.sort((a, b) => a.username.localeCompare(b.username)));
-    } catch (error) {
-      setError('Kullanıcı verileri yüklenirken bir hata oluştu');
-      console.error('Error fetching user groups:', error);
-    } finally {
-      setIsLoading(false);
-      setIsRefreshing(false);
-    }
-  }, [product._id]);
+      try {
+        const users = await apiService.getProductUsersBySensor(
+          product._id,
+          selectedSensor
+        );
+        setUserGroups(
+          users.sort((a, b) => a.username.localeCompare(b.username))
+        );
+      } catch (error) {
+        setError('Kullanıcı verileri yüklenirken bir hata oluştu');
+        console.error('Error fetching user groups:', error);
+      } finally {
+        setIsLoading(false);
+        setIsRefreshing(false);
+      }
+    },
+    [product._id]
+  );
 
   const handleRefresh = useCallback(() => {
     setIsRefreshing(true);
@@ -73,11 +87,11 @@ const UserSelectionScreen: React.FC<UserSelectionScreenProps> = ({ navigation, r
     }
 
     const trimmedUsername = newUsername.trim();
-    
-    const existingUser = userGroups.find(group => 
-      group.username.toLowerCase() === trimmedUsername.toLowerCase()
+
+    const existingUser = userGroups.find(
+      (group) => group.username.toLowerCase() === trimmedUsername.toLowerCase()
     );
-    
+
     if (existingUser) {
       Alert.alert('Bilgi', 'Bu kullanıcı adı zaten mevcut');
       return;
@@ -87,11 +101,11 @@ const UserSelectionScreen: React.FC<UserSelectionScreenProps> = ({ navigation, r
     try {
       // Save username to storage for future use
       await storageService.saveUsername(trimmedUsername);
-      
-      navigation.navigate('Home', { 
-        username: trimmedUsername, 
-        product, 
-        selectedSensor 
+
+      navigation.navigate('Home', {
+        username: trimmedUsername,
+        product,
+        selectedSensor,
       });
     } catch (error) {
       Alert.alert('Hata', 'Kullanıcı seçilirken bir hata oluştu');
@@ -104,11 +118,11 @@ const UserSelectionScreen: React.FC<UserSelectionScreenProps> = ({ navigation, r
     try {
       // Save username to storage for future use
       await storageService.saveUsername(username);
-      
-      navigation.navigate('Home', { 
-        username, 
-        product, 
-        selectedSensor 
+
+      navigation.navigate('Home', {
+        username,
+        product,
+        selectedSensor,
       });
     } catch (error) {
       Alert.alert('Hata', 'Kullanıcı seçilirken bir hata oluştu');
@@ -138,7 +152,7 @@ const UserSelectionScreen: React.FC<UserSelectionScreenProps> = ({ navigation, r
   const renderHeader = () => (
     <>
       <View style={styles.header}>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.backButton}
           onPress={() => navigation.goBack()}
         >
@@ -152,7 +166,9 @@ const UserSelectionScreen: React.FC<UserSelectionScreenProps> = ({ navigation, r
 
       <View style={styles.productInfo}>
         <Text style={styles.productName}>{product.name}</Text>
-        <Text style={styles.selectedSensor}>Seçili Sensör: {selectedSensor}</Text>
+        <Text style={styles.selectedSensor}>
+          Seçili Sensör: {selectedSensor}
+        </Text>
       </View>
 
       <View style={styles.newUserSection}>
@@ -170,12 +186,20 @@ const UserSelectionScreen: React.FC<UserSelectionScreenProps> = ({ navigation, r
             onSubmitEditing={handleSaveUsername}
           />
           <TouchableOpacity
-            style={[styles.saveButton, !newUsername.trim() && styles.saveButtonDisabled]}
+            style={[
+              styles.saveButton,
+              !newUsername.trim() && styles.saveButtonDisabled,
+            ]}
             onPress={handleSaveUsername}
             disabled={!newUsername.trim() || isSaving}
             activeOpacity={0.7}
           >
-            <Text style={[styles.saveButtonText, !newUsername.trim() && styles.saveButtonTextDisabled]}>
+            <Text
+              style={[
+                styles.saveButtonText,
+                !newUsername.trim() && styles.saveButtonTextDisabled,
+              ]}
+            >
               {isSaving ? 'Kaydediliyor...' : 'Kaydet'}
             </Text>
           </TouchableOpacity>
@@ -194,36 +218,38 @@ const UserSelectionScreen: React.FC<UserSelectionScreenProps> = ({ navigation, r
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar style="dark" />
-      <KeyboardAvoidingView 
+      <KeyboardAvoidingView
         style={styles.keyboardAvoidingView}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
         <FlatList
-        data={userGroups}
-        renderItem={renderUserItem}
-        keyExtractor={(item) => item.username}
-        ListHeaderComponent={renderHeader}
-        keyboardShouldPersistTaps="handled"
-        keyboardDismissMode="on-drag"
-        refreshControl={
-          <RefreshControl
-            refreshing={isRefreshing}
-            onRefresh={handleRefresh}
-            colors={['#4CAF50']}
-            tintColor="#4CAF50"
-          />
-        }
-        ListEmptyComponent={
-          !isLoading ? (
-            <View style={styles.emptyContainer}>
-              <Text style={styles.emptyText}>Henüz kullanıcı bulunamadı</Text>
-              <Text style={styles.emptySubText}>Yukarıdan yeni bir kullanıcı ekleyebilirsiniz</Text>
-            </View>
-          ) : null
-        }
-        contentContainerStyle={styles.listContent}
-        showsVerticalScrollIndicator={false}
-      />
+          data={userGroups}
+          renderItem={renderUserItem}
+          keyExtractor={(item) => item.username}
+          ListHeaderComponent={renderHeader}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
+          refreshControl={
+            <RefreshControl
+              refreshing={isRefreshing}
+              onRefresh={handleRefresh}
+              colors={['#4CAF50']}
+              tintColor="#4CAF50"
+            />
+          }
+          ListEmptyComponent={
+            !isLoading ? (
+              <View style={styles.emptyContainer}>
+                <Text style={styles.emptyText}>Henüz kullanıcı bulunamadı</Text>
+                <Text style={styles.emptySubText}>
+                  Yukarıdan yeni bir kullanıcı ekleyebilirsiniz
+                </Text>
+              </View>
+            ) : null
+          }
+          contentContainerStyle={styles.listContent}
+          showsVerticalScrollIndicator={false}
+        />
       </KeyboardAvoidingView>
       {error && (
         <View style={styles.errorContainer}>

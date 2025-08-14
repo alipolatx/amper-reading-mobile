@@ -54,4 +54,4 @@ export type RootStackParamList = {
   ProductDetail: { product: Product };
   UserSelection: { product: Product; selectedSensor: string };
   Home: { username: string; product: Product; selectedSensor: string };
-}; 
+};

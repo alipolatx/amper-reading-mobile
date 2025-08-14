@@ -26,11 +26,13 @@ ESP32 cihazından gelen amper tüketim verilerini takip eden modern React Native
 ## 📱 Ekran Yapısı
 
 ### Giriş Ekranı (LoginScreen)
+
 - Kullanıcı adı girişi ve validasyon
 - API bağlantı kontrolü
 - Modern form tasarımı
 
 ### Ana Ekran (HomeScreen)
+
 - **Üst Kısım**: Dairesel progress bar
   - Yüksek amper oranı (%)
   - Toplam okuma sayısı
@@ -43,7 +45,8 @@ ESP32 cihazından gelen amper tüketim verilerini takip eden modern React Native
 ## 🔧 Kurulum
 
 ### Gereksinimler
-- Node.js 18+ 
+
+- Node.js 18+
 - npm veya yarn
 - Expo CLI
 - iOS Simulator veya Android Emulator
@@ -51,22 +54,26 @@ ESP32 cihazından gelen amper tüketim verilerini takip eden modern React Native
 ### Adımlar
 
 1. **Projeyi klonlayın**
+
 ```bash
 git clone <repository-url>
 cd amper-reading-mobile
 ```
 
 2. **Bağımlılıkları yükleyin**
+
 ```bash
 npm install
 ```
 
 3. **Uygulamayı başlatın**
+
 ```bash
 npm start
 ```
 
 4. **Platform seçin**
+
 - iOS: `npm run ios`
 - Android: `npm run android`
 - Web: `npm run web`
@@ -82,11 +89,13 @@ Uygulama, backend API'si ile şu endpoint'leri kullanır:
 ## 🎨 Bileşenler
 
 ### CircularProgress
+
 - SVG tabanlı dairesel progress bar
 - Responsive tasarım
 - Özelleştirilebilir renkler ve boyutlar
 
 ### ReadingsTable
+
 - FlatList ile performanslı liste
 - Pull-to-refresh desteği
 - Loading ve error state'leri
@@ -96,7 +105,7 @@ Uygulama, backend API'si ile şu endpoint'leri kullanır:
 
 1. **ESP32** → POST /api/data → **Backend API**
 2. **Backend API** → MongoDB Atlas
-3. **Mobile App** ← GET /api/user/* ← **Backend API**
+3. **Mobile App** ← GET /api/user/\* ← **Backend API**
 4. **60 saniye interval** ile otomatik yenileme
 
 ## 📁 Proje Yapısı
@@ -125,16 +134,19 @@ src/
 ### Expo Application Services (EAS)
 
 1. **EAS CLI kurulumu**
+
 ```bash
 npm install -g @expo/eas-cli
 ```
 
 2. **EAS Build konfigürasyonu**
+
 ```bash
 eas build:configure
 ```
 
 3. **Build oluşturma**
+
 ```bash
 eas build --platform ios
 eas build --platform android
@@ -143,17 +155,20 @@ eas build --platform android
 ## 🔧 Geliştirme
 
 ### Kod Standartları
+
 - TypeScript strict mode
 - ESLint ve Prettier
 - Modern ES6+ syntax
 - Functional components ve hooks
 
 ### Test
+
 ```bash
 npm test
 ```
 
 ### Lint
+
 ```bash
 npm run lint
 ```
@@ -191,4 +206,4 @@ Bu proje MIT lisansı altında lisanslanmıştır.
 
 ---
 
-**Not**: Bu uygulama ESP32 cihazından gelen amper verilerini görselleştirmek için tasarlanmıştır. Backend API'si ayrı bir projede bulunmaktadır. 
+**Not**: Bu uygulama ESP32 cihazından gelen amper verilerini görselleştirmek için tasarlanmıştır. Backend API'si ayrı bir projede bulunmaktadır.

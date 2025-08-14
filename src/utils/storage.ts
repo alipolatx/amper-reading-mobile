@@ -78,7 +78,10 @@ class StorageService {
     try {
       const currentPrefs = await this.getPreferences();
       const updatedPrefs = { ...currentPrefs, ...preferences };
-      await AsyncStorage.setItem(STORAGE_KEYS.USER_PREFERENCES, JSON.stringify(updatedPrefs));
+      await AsyncStorage.setItem(
+        STORAGE_KEYS.USER_PREFERENCES,
+        JSON.stringify(updatedPrefs)
+      );
       console.log('✅ Preferences saved:', updatedPrefs);
     } catch (error) {
       console.error('❌ Error saving preferences:', error);
@@ -88,7 +91,9 @@ class StorageService {
 
   async getPreferences(): Promise<UserPreferences> {
     try {
-      const prefsString = await AsyncStorage.getItem(STORAGE_KEYS.USER_PREFERENCES);
+      const prefsString = await AsyncStorage.getItem(
+        STORAGE_KEYS.USER_PREFERENCES
+      );
       if (prefsString) {
         const prefs = JSON.parse(prefsString);
         return { ...DEFAULT_PREFERENCES, ...prefs };
@@ -124,4 +129,4 @@ class StorageService {
 
 // Export singleton instance
 export const storageService = new StorageService();
-export default storageService; 
+export default storageService;

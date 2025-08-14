@@ -13,9 +13,12 @@ import {
 import { StatusBar } from 'expo-status-bar';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RouteProp } from '@react-navigation/native';
-import { RootStackParamList, Product } from '../types';
+import { RootStackParamList } from '../types';
 
-type ProductDetailNavigationProp = NativeStackNavigationProp<RootStackParamList, 'ProductDetail'>;
+type ProductDetailNavigationProp = NativeStackNavigationProp<
+  RootStackParamList,
+  'ProductDetail'
+>;
 type ProductDetailRouteProp = RouteProp<RootStackParamList, 'ProductDetail'>;
 
 interface ProductDetailScreenProps {
@@ -23,9 +26,14 @@ interface ProductDetailScreenProps {
   route: ProductDetailRouteProp;
 }
 
-const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({ navigation, route }) => {
+const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
+  navigation,
+  route,
+}) => {
   const { product } = route.params;
-  const [selectedSensor, setSelectedSensor] = useState<string>(product.sensors[0] || '');
+  const [selectedSensor, setSelectedSensor] = useState<string>(
+    product.sensors[0] || ''
+  );
   const [showSensorModal, setShowSensorModal] = useState(false);
 
   const handleContinue = () => {
@@ -41,28 +49,28 @@ const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({ navigation, r
     <TouchableOpacity
       style={[
         styles.sensorOption,
-        selectedSensor === item && styles.selectedSensorOption
+        selectedSensor === item && styles.selectedSensorOption,
       ]}
       onPress={() => handleSensorSelect(item)}
     >
-      <Text style={[
-        styles.sensorOptionText,
-        selectedSensor === item && styles.selectedSensorOptionText
-      ]}>
+      <Text
+        style={[
+          styles.sensorOptionText,
+          selectedSensor === item && styles.selectedSensorOptionText,
+        ]}
+      >
         {item}
       </Text>
-      {selectedSensor === item && (
-        <Text style={styles.checkmark}>✓</Text>
-      )}
+      {selectedSensor === item && <Text style={styles.checkmark}>✓</Text>}
     </TouchableOpacity>
   );
 
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar style="dark" />
-      
+
       <View style={styles.header}>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.backButton}
           onPress={() => navigation.goBack()}
         >
@@ -78,7 +86,8 @@ const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({ navigation, r
         <View style={styles.productInfo}>
           <Text style={styles.productName}>{product.name}</Text>
           <Text style={styles.productStats}>
-            {product.sensors.length} sensör • {product.amperreadings.length} okuma
+            {product.sensors.length} sensör • {product.amperreadings.length}{' '}
+            okuma
           </Text>
         </View>
 
@@ -87,7 +96,7 @@ const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({ navigation, r
           <Text style={styles.sectionSubtitle}>
             Amper ölçümlerini görüntülemek istediğiniz sensörü seçin
           </Text>
-          
+
           <TouchableOpacity
             style={styles.sensorDropdown}
             onPress={() => setShowSensorModal(true)}
@@ -127,7 +136,7 @@ const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({ navigation, r
                 <Text style={styles.closeButtonText}>✕</Text>
               </TouchableOpacity>
             </View>
-            
+
             <FlatList
               data={product.sensors}
               renderItem={renderSensorItem}

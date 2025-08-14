@@ -6,7 +6,7 @@
 export const formatTimestamp = (timestamp: string): string => {
   try {
     const date = new Date(timestamp);
-    
+
     // Check if date is valid
     if (isNaN(date.getTime())) {
       return 'Geçersiz Tarih';
@@ -63,7 +63,7 @@ export const isWithinLast24Hours = (timestamp: string): boolean => {
     const now = new Date();
     const diffInMs = now.getTime() - date.getTime();
     const diffInHours = diffInMs / (1000 * 60 * 60);
-    
+
     return diffInHours <= 24;
   } catch (error) {
     console.error('Error checking 24 hours:', error);
@@ -97,7 +97,10 @@ export const formatAmperValue = (amper: number): string => {
 /**
  * Get time difference in minutes between two timestamps
  */
-export const getTimeDifferenceInMinutes = (timestamp1: string, timestamp2: string): number => {
+export const getTimeDifferenceInMinutes = (
+  timestamp1: string,
+  timestamp2: string
+): number => {
   try {
     const date1 = new Date(timestamp1);
     const date2 = new Date(timestamp2);
@@ -107,4 +110,4 @@ export const getTimeDifferenceInMinutes = (timestamp1: string, timestamp2: strin
     console.error('Error calculating time difference:', error);
     return 0;
   }
-}; 
+};

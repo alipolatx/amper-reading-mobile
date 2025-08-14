@@ -17,7 +17,9 @@ class ApiService {
     // Request interceptor for logging
     this.api.interceptors.request.use(
       (config) => {
-        console.log(`🚀 API Request: ${config.method?.toUpperCase()} ${config.url}`);
+        console.log(
+          `🚀 API Request: ${config.method?.toUpperCase()} ${config.url}`
+        );
         return config;
       },
       (error) => {
@@ -32,7 +34,11 @@ class ApiService {
         return response;
       },
       (error) => {
-        console.error('❌ API Response Error:', error.response?.status, error.message);
+        console.error(
+          '❌ API Response Error:',
+          error.response?.status,
+          error.message
+        );
         console.error('📥 Error Response:', error.response?.data);
         return Promise.reject(error);
       }
@@ -42,7 +48,8 @@ class ApiService {
   // Health check
   async healthCheck(): Promise<boolean> {
     try {
-      const response = await this.api.get<ApiResponse<{ message: string }>>('/api/health');
+      const response =
+        await this.api.get<ApiResponse<{ message: string }>>('/api/health');
       return response.data.success;
     } catch (error) {
       console.error('Health check failed:', error);
@@ -53,8 +60,9 @@ class ApiService {
   // Get all products
   async getProducts(): Promise<Product[]> {
     try {
-      const response = await this.api.get<ApiResponse<Product[]>>('/api/products');
-      
+      const response =
+        await this.api.get<ApiResponse<Product[]>>('/api/products');
+
       if (!response.data.success) {
         throw new Error(response.data.message || 'Failed to fetch products');
       }
@@ -69,8 +77,10 @@ class ApiService {
   // Get user statistics
   async getUserStats(username: string): Promise<UserStats> {
     try {
-      const response = await this.api.get<ApiResponse<UserStats>>(`/api/user/${username}/stats`);
-      
+      const response = await this.api.get<ApiResponse<UserStats>>(
+        `/api/user/${username}/stats`
+      );
+
       if (!response.data.success) {
         throw new Error(response.data.message || 'Failed to fetch user stats');
       }
@@ -85,10 +95,14 @@ class ApiService {
   // Get recent readings (last 24 hours)
   async getRecentReadings(username: string): Promise<AmperReading[]> {
     try {
-      const response = await this.api.get<ApiResponse<AmperReading[]>>(`/api/user/${username}/recent`);
-      
+      const response = await this.api.get<ApiResponse<AmperReading[]>>(
+        `/api/user/${username}/recent`
+      );
+
       if (!response.data.success) {
-        throw new Error(response.data.message || 'Failed to fetch recent readings');
+        throw new Error(
+          response.data.message || 'Failed to fetch recent readings'
+        );
       }
 
       return response.data.data;
@@ -99,12 +113,19 @@ class ApiService {
   }
 
   // Get readings with time range filter
-  async getReadingsWithTimeRange(username: string, timeRange: string): Promise<AmperReading[]> {
+  async getReadingsWithTimeRange(
+    username: string,
+    timeRange: string
+  ): Promise<AmperReading[]> {
     try {
-      const response = await this.api.get<ApiResponse<AmperReading[]>>(`/api/user/${username}/readings?timeRange=${timeRange}`);
-      
+      const response = await this.api.get<ApiResponse<AmperReading[]>>(
+        `/api/user/${username}/readings?timeRange=${timeRange}`
+      );
+
       if (!response.data.success) {
-        throw new Error(response.data.message || 'Failed to fetch readings with time range');
+        throw new Error(
+          response.data.message || 'Failed to fetch readings with time range'
+        );
       }
 
       return response.data.data;
@@ -115,7 +136,11 @@ class ApiService {
   }
 
   // Get all readings with pagination
-  async getAllReadings(username: string, limit: number = 50, page: number = 1): Promise<{
+  async getAllReadings(
+    username: string,
+    limit: number = 50,
+    page: number = 1
+  ): Promise<{
     readings: AmperReading[];
     pagination: {
       page: number;
@@ -125,19 +150,25 @@ class ApiService {
     };
   }> {
     try {
-      const endpoint = username ? `/api/user/${username}/all?limit=${limit}&page=${page}` : `/api/readings?limit=${limit}&page=${page}`;
-      const response = await this.api.get<ApiResponse<{
-        readings: AmperReading[];
-        pagination: {
-          page: number;
-          limit: number;
-          total: number;
-          pages: number;
-        };
-      }>>(endpoint);
-      
+      const endpoint = username
+        ? `/api/user/${username}/all?limit=${limit}&page=${page}`
+        : `/api/readings?limit=${limit}&page=${page}`;
+      const response = await this.api.get<
+        ApiResponse<{
+          readings: AmperReading[];
+          pagination: {
+            page: number;
+            limit: number;
+            total: number;
+            pages: number;
+          };
+        }>
+      >(endpoint);
+
       if (!response.data.success) {
-        throw new Error(response.data.message || 'Failed to fetch all readings');
+        throw new Error(
+          response.data.message || 'Failed to fetch all readings'
+        );
       }
 
       return response.data.data;
@@ -148,31 +179,37 @@ class ApiService {
   }
 
   // Get users for a specific product with stats
-  async getProductUsers(productId: string): Promise<Array<{
-    username: string;
-    readingCount: number;
-    lastReading?: string;
-  }>> {
+  async getProductUsers(productId: string): Promise<
+    Array<{
+      username: string;
+      readingCount: number;
+      lastReading?: string;
+    }>
+  > {
     try {
-      const response = await this.api.get<ApiResponse<{
-        product: Product;
-        users: Array<{
-          username: string;
-          totalReadings: number;
-          averageAmper: number;
-          latestReading?: any;
-        }>;
-      }>>(`/api/products/${productId}/users`);
-      
+      const response = await this.api.get<
+        ApiResponse<{
+          product: Product;
+          users: Array<{
+            username: string;
+            totalReadings: number;
+            averageAmper: number;
+            latestReading?: any;
+          }>;
+        }>
+      >(`/api/products/${productId}/users`);
+
       if (!response.data.success) {
-        throw new Error(response.data.message || 'Failed to fetch product users');
+        throw new Error(
+          response.data.message || 'Failed to fetch product users'
+        );
       }
 
       // Transform the response to match expected format
-      return response.data.data.users.map(user => ({
+      return response.data.data.users.map((user) => ({
         username: user.username,
         readingCount: user.totalReadings,
-        lastReading: user.latestReading?.timestamp
+        lastReading: user.latestReading?.timestamp,
       }));
     } catch (error) {
       console.error('Error fetching product users:', error);
@@ -181,35 +218,44 @@ class ApiService {
   }
 
   // Get users for a specific product filtered by sensor
-  async getProductUsersBySensor(productId: string, sensor: string): Promise<Array<{
-    username: string;
-    readingCount: number;
-    lastReading?: string;
-  }>> {
+  async getProductUsersBySensor(
+    productId: string,
+    sensor: string
+  ): Promise<
+    Array<{
+      username: string;
+      readingCount: number;
+      lastReading?: string;
+    }>
+  > {
     try {
       const params = new URLSearchParams({
-        sensor
+        sensor,
       });
-      
-      const response = await this.api.get<ApiResponse<{
-        product: Product;
-        users: Array<{
-          username: string;
-          totalReadings: number;
-          averageAmper: number;
-          latestReading?: any;
-        }>;
-      }>>(`/api/products/${productId}/sensor?${params}`);
-      
+
+      const response = await this.api.get<
+        ApiResponse<{
+          product: Product;
+          users: Array<{
+            username: string;
+            totalReadings: number;
+            averageAmper: number;
+            latestReading?: any;
+          }>;
+        }>
+      >(`/api/products/${productId}/sensor?${params}`);
+
       if (!response.data.success) {
-        throw new Error(response.data.message || 'Failed to fetch product users by sensor');
+        throw new Error(
+          response.data.message || 'Failed to fetch product users by sensor'
+        );
       }
 
       // Transform the response to match expected format
-      return response.data.data.users.map(user => ({
+      return response.data.data.users.map((user) => ({
         username: user.username,
         readingCount: user.totalReadings,
-        lastReading: user.latestReading?.timestamp
+        lastReading: user.latestReading?.timestamp,
       }));
     } catch (error) {
       console.error('Error fetching product users by sensor:', error);
@@ -219,8 +265,8 @@ class ApiService {
 
   // Get readings for a specific product, user and sensor
   async getProductUserReadings(
-    productId: string, 
-    username: string, 
+    productId: string,
+    username: string,
     sensor: string,
     options?: {
       timeRange?: string;
@@ -230,29 +276,35 @@ class ApiService {
   ): Promise<AmperReading[]> {
     try {
       const { timeRange = '24h', limit = 50, page = 1 } = options || {};
-      console.log(`🔍 Fetching readings for product: ${productId}, user: ${username}, sensor: ${sensor}, timeRange: ${timeRange}`);
-      
+      console.log(
+        `🔍 Fetching readings for product: ${productId}, user: ${username}, sensor: ${sensor}, timeRange: ${timeRange}`
+      );
+
       const params = new URLSearchParams({
         sensor,
         limit: limit.toString(),
         page: page.toString(),
-        ...(timeRange && { timeRange })
+        ...(timeRange && { timeRange }),
       });
-      
-      const response = await this.api.get<ApiResponse<{
-        product: Product;
-        username: string;
-        readings: AmperReading[];
-        pagination: {
-          page: number;
-          limit: number;
-          total: number;
-          pages: number;
-        };
-      }>>(`/api/products/${productId}/users/${username}/readings?${params}`);
-            
+
+      const response = await this.api.get<
+        ApiResponse<{
+          product: Product;
+          username: string;
+          readings: AmperReading[];
+          pagination: {
+            page: number;
+            limit: number;
+            total: number;
+            pages: number;
+          };
+        }>
+      >(`/api/products/${productId}/users/${username}/readings?${params}`);
+
       if (!response.data.success) {
-        throw new Error(response.data.message || 'Failed to fetch product user readings');
+        throw new Error(
+          response.data.message || 'Failed to fetch product user readings'
+        );
       }
 
       return response.data.data.readings;
@@ -265,4 +317,4 @@ class ApiService {
 
 // Export singleton instance
 export const apiService = new ApiService();
-export default apiService; 
+export default apiService;

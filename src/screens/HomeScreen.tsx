@@ -15,17 +15,9 @@ import {
 import { StatusBar } from 'expo-status-bar';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RouteProp } from '@react-navigation/native';
-import { RootStackParamList, UserStats, AmperReading, Product } from '../types';
+import { RootStackParamList, UserStats, AmperReading } from '../types';
 import { apiService } from '../services/api';
 import CircularProgress from '../components/CircularProgress';
-
-// Table Header Row
-const TableHeader = () => (
-  <View style={styles.tableRow}>
-    <Text style={[styles.tableCell, styles.headerCell]}>Tarih-Saat</Text>
-    <Text style={[styles.tableCell, styles.headerCell]}>Amper Değeri</Text>
-  </View>
-);
 
 // Helper function to get amper status and style
 const getAmperStatus = (amper: number) => {
@@ -45,36 +37,62 @@ const getAmperStatus = (amper: number) => {
 // Helper function to get time range label
 const getTimeRangeLabel = (range: string) => {
   switch (range) {
-    case '1h': return 'Son 1 Saat';
-    case '6h': return 'Son 6 Saat';
-    case '12h': return 'Son 12 Saat';
-    case '24h': return 'Son 24 Saat';
-    case '7d': return 'Son 7 Gün';
-    case '30d': return 'Son 30 Gün';
-    default: return 'Son 24 Saat';
+    case '1h':
+      return 'Son 1 Saat';
+    case '6h':
+      return 'Son 6 Saat';
+    case '12h':
+      return 'Son 12 Saat';
+    case '24h':
+      return 'Son 24 Saat';
+    case '7d':
+      return 'Son 7 Gün';
+    case '30d':
+      return 'Son 30 Gün';
+    default:
+      return 'Son 24 Saat';
   }
 };
 
 // FlatList Table Row
 const TableRow = ({ item }: { item: AmperReading }) => {
   const amperStatus = getAmperStatus(item.amper);
-  
+
   if (!amperStatus) {
     return null; // Don't render if amper > 22
   }
-  
+
   return (
     <View style={styles.tableRow}>
-      <Text style={styles.tableCell}>{new Date(item.timestamp).toLocaleString('tr-TR', { hour12: false })}</Text>
+      <Text style={styles.tableCell}>
+        {new Date(item.timestamp).toLocaleString('tr-TR', { hour12: false })}
+      </Text>
       <View style={styles.amperCell}>
-        <Text style={[styles.tableCell, styles[amperStatus.style as keyof typeof styles]]}>{item.amper.toFixed(1)}A</Text>
-        <Text style={[styles.statusText, styles[amperStatus.style as keyof typeof styles]]}>{amperStatus.status.toUpperCase()}</Text>
+        <Text
+          style={[
+            styles.tableCell,
+            styles[amperStatus.style as keyof typeof styles],
+          ]}
+        >
+          {item.amper.toFixed(1)}A
+        </Text>
+        <Text
+          style={[
+            styles.statusText,
+            styles[amperStatus.style as keyof typeof styles],
+          ]}
+        >
+          {amperStatus.status.toUpperCase()}
+        </Text>
       </View>
     </View>
   );
 };
 
-type HomeScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Home'>;
+type HomeScreenNavigationProp = NativeStackNavigationProp<
+  RootStackParamList,
+  'Home'
+>;
 type HomeScreenRouteProp = RouteProp<RootStackParamList, 'Home'>;
 
 interface HomeScreenProps {
@@ -84,7 +102,7 @@ interface HomeScreenProps {
 
 const HomeScreen: React.FC<HomeScreenProps> = ({ navigation, route }) => {
   const { username, product, selectedSensor } = route.params;
-  
+
   const [stats, setStats] = useState<UserStats | null>(null);
   const [recentReadings, setRecentReadings] = useState<AmperReading[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -97,64 +115,79 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation, route }) => {
   // Auto-refresh interval (60 seconds)
   const REFRESH_INTERVAL = 60000;
 
-  const fetchData = useCallback(async (showLoading = true) => {
-    if (showLoading) {
-      setIsLoading(true);
-    }
-    setError(null);
+  const fetchData = useCallback(
+    async (showLoading = true) => {
+      if (showLoading) {
+        setIsLoading(true);
+      }
+      setError(null);
 
-    try {
-      // Fetch readings for the specific product, user and sensor
-      const readingsData = await apiService.getProductUserReadings(product._id, username, selectedSensor, { timeRange });
+      try {
+        // Fetch readings for the specific product, user and sensor
+        const readingsData = await apiService.getProductUserReadings(
+          product._id,
+          username,
+          selectedSensor,
+          { timeRange }
+        );
 
-      // Filter out readings over 22A
-      const filteredReadings = readingsData.filter((reading: AmperReading) => reading.amper <= 22);
-      
-      // Calculate stats from filtered readings using the 4-tier system
-      const totalReadings = filteredReadings.length;
-      const offCount = filteredReadings.filter(r => r.amper <= 1).length;
-      const minCount = filteredReadings.filter(r => r.amper >= 1 && r.amper < 3).length;
-      const midCount = filteredReadings.filter(r => r.amper >= 3 && r.amper < 5).length;
-      const maxCount = filteredReadings.filter(r => r.amper >= 5 && r.amper <= 22).length;
-      
-      // Percentage of active readings (min + mid + max)
-      const activeCount = minCount + midCount + maxCount;
-      const percentage = totalReadings > 0 ? (activeCount / totalReadings) * 100 : 0;
-      
-      setStats({
-        totalReadings,
-        highAmpCount: activeCount,
-        lowAmpCount: offCount,
-        percentage,
-        offCount,
-        minCount,
-        midCount,
-        maxCount
-      });
-      setRecentReadings(filteredReadings);
-      setLastSync(new Date().toISOString());
+        // Filter out readings over 22A
+        const filteredReadings = readingsData.filter(
+          (reading: AmperReading) => reading.amper <= 22
+        );
 
-    } catch (error) {
-      setError('Veriler yüklenirken bir hata oluştu');
-      Alert.alert(
-        'Veri Hatası',
-        'Sunucudan veri alınamadı. Lütfen internet bağlantınızı kontrol edin.',
-        [
-          { text: 'Tekrar Dene', onPress: () => fetchData() },
-          { text: 'Tamam', style: 'cancel' },
-        ]
-      );
-    } finally {
-      setIsLoading(false);
-      setIsRefreshing(false);
-    }
-  }, [product._id, username, timeRange]);
+        // Calculate stats from filtered readings using the 4-tier system
+        const totalReadings = filteredReadings.length;
+        const offCount = filteredReadings.filter((r) => r.amper <= 1).length;
+        const minCount = filteredReadings.filter(
+          (r) => r.amper >= 1 && r.amper < 3
+        ).length;
+        const midCount = filteredReadings.filter(
+          (r) => r.amper >= 3 && r.amper < 5
+        ).length;
+        const maxCount = filteredReadings.filter(
+          (r) => r.amper >= 5 && r.amper <= 22
+        ).length;
+
+        // Percentage of active readings (min + mid + max)
+        const activeCount = minCount + midCount + maxCount;
+        const percentage =
+          totalReadings > 0 ? (activeCount / totalReadings) * 100 : 0;
+
+        setStats({
+          totalReadings,
+          highAmpCount: activeCount,
+          lowAmpCount: offCount,
+          percentage,
+          offCount,
+          minCount,
+          midCount,
+          maxCount,
+        });
+        setRecentReadings(filteredReadings);
+        setLastSync(new Date().toISOString());
+      } catch (error) {
+        setError('Veriler yüklenirken bir hata oluştu');
+        Alert.alert(
+          'Veri Hatası',
+          'Sunucudan veri alınamadı. Lütfen internet bağlantınızı kontrol edin.',
+          [
+            { text: 'Tekrar Dene', onPress: () => fetchData() },
+            { text: 'Tamam', style: 'cancel' },
+          ]
+        );
+      } finally {
+        setIsLoading(false);
+        setIsRefreshing(false);
+      }
+    },
+    [product._id, username, timeRange]
+  );
 
   const handleRefresh = useCallback(() => {
     setIsRefreshing(true);
     fetchData(false);
   }, [fetchData]);
-
 
   // Initial data fetch
   useEffect(() => {
@@ -171,12 +204,11 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation, route }) => {
     return () => clearInterval(interval);
   }, [fetchData, isLoading, isRefreshing]);
 
-
   // Header + Progress + Sync Info + Error + Table Header
   const renderHeader = () => (
     <>
       <View style={styles.header}>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.backButton}
           onPress={() => navigation.goBack()}
         >
@@ -205,7 +237,9 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation, route }) => {
       </View>
       {lastSync && (
         <View style={styles.syncInfo}>
-          <Text style={styles.syncText}>Son güncelleme: {new Date(lastSync).toLocaleTimeString('tr-TR')}</Text>
+          <Text style={styles.syncText}>
+            Son güncelleme: {new Date(lastSync).toLocaleTimeString('tr-TR')}
+          </Text>
         </View>
       )}
       {error && (
@@ -219,16 +253,28 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation, route }) => {
           onPress={() => setShowTimeFilter(true)}
           activeOpacity={0.7}
         >
-          <Text style={styles.filterButtonText}>Zaman Filtresi: {getTimeRangeLabel(timeRange)}</Text>
+          <Text style={styles.filterButtonText}>
+            Zaman Filtresi: {getTimeRangeLabel(timeRange)}
+          </Text>
           <Text style={styles.filterArrow}>▼</Text>
         </TouchableOpacity>
       </View>
       <View style={styles.tableSection}>
         <Text style={styles.title}>Amper Verileri</Text>
-        <Text style={styles.subtitle}>{recentReadings.length} okuma bulundu</Text>
+        <Text style={styles.subtitle}>
+          {recentReadings.length} okuma bulundu
+        </Text>
         <View style={styles.tableRowHeader}>
           <Text style={[styles.tableCell, styles.headerCell]}>Tarih-Saat</Text>
-          <Text style={[styles.tableCell, styles.headerCell, styles.amperHeaderCell]}>Amper Değeri</Text>
+          <Text
+            style={[
+              styles.tableCell,
+              styles.headerCell,
+              styles.amperHeaderCell,
+            ]}
+          >
+            Amper Değeri
+          </Text>
         </View>
       </View>
     </>
@@ -249,23 +295,27 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation, route }) => {
     { value: '30d', label: 'Son 30 Gün' },
   ];
 
-  const renderTimeRangeOption = ({ item }: { item: { value: string; label: string } }) => (
+  const renderTimeRangeOption = ({
+    item,
+  }: {
+    item: { value: string; label: string };
+  }) => (
     <TouchableOpacity
       style={[
         styles.timeRangeOption,
-        timeRange === item.value && styles.selectedTimeRangeOption
+        timeRange === item.value && styles.selectedTimeRangeOption,
       ]}
       onPress={() => handleTimeRangeSelect(item.value)}
     >
-      <Text style={[
-        styles.timeRangeOptionText,
-        timeRange === item.value && styles.selectedTimeRangeOptionText
-      ]}>
+      <Text
+        style={[
+          styles.timeRangeOptionText,
+          timeRange === item.value && styles.selectedTimeRangeOptionText,
+        ]}
+      >
         {item.label}
       </Text>
-      {timeRange === item.value && (
-        <Text style={styles.checkmark}>✓</Text>
-      )}
+      {timeRange === item.value && <Text style={styles.checkmark}>✓</Text>}
     </TouchableOpacity>
   );
 
@@ -288,8 +338,12 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation, route }) => {
         ListEmptyComponent={
           !isLoading ? (
             <View style={styles.emptyContainer}>
-              <Text style={styles.emptyText}>Seçilen zaman aralığında veri bulunamadı</Text>
-              <Text style={styles.emptySubText}>ESP32 cihazından veri gelmeye başladığında burada görünecek</Text>
+              <Text style={styles.emptyText}>
+                Seçilen zaman aralığında veri bulunamadı
+              </Text>
+              <Text style={styles.emptySubText}>
+                ESP32 cihazından veri gelmeye başladığında burada görünecek
+              </Text>
             </View>
           ) : null
         }
@@ -313,7 +367,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation, route }) => {
                 <Text style={styles.closeButtonText}>✕</Text>
               </TouchableOpacity>
             </View>
-            
+
             <FlatList
               data={timeRangeOptions}
               renderItem={renderTimeRangeOption}
@@ -382,7 +436,15 @@ const styles = StyleSheet.create({
   },
   syncInfo: { alignItems: 'center', marginBottom: 8 },
   syncText: { fontSize: 12, color: '#999' },
-  errorContainer: { backgroundColor: '#FFEBEE', marginHorizontal: 16, marginBottom: 8, padding: 12, borderRadius: 8, borderLeftWidth: 4, borderLeftColor: '#F44336' },
+  errorContainer: {
+    backgroundColor: '#FFEBEE',
+    marginHorizontal: 16,
+    marginBottom: 8,
+    padding: 12,
+    borderRadius: 8,
+    borderLeftWidth: 4,
+    borderLeftColor: '#F44336',
+  },
   errorText: { color: '#D32F2F', fontSize: 14 },
   tableSection: {
     backgroundColor: '#fff',
@@ -434,9 +496,24 @@ const styles = StyleSheet.create({
   amperHeaderCell: {
     textAlign: 'right',
   },
-  emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 40 },
-  emptyText: { fontSize: 16, fontWeight: '600', color: '#666', textAlign: 'center' },
-  emptySubText: { fontSize: 14, color: '#999', textAlign: 'center', marginTop: 8 },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 40,
+  },
+  emptyText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#666',
+    textAlign: 'center',
+  },
+  emptySubText: {
+    fontSize: 14,
+    color: '#999',
+    textAlign: 'center',
+    marginTop: 8,
+  },
   progressBarWrapper: {
     alignItems: 'center',
     marginTop: 32,
@@ -564,4 +641,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default HomeScreen; 
+export default HomeScreen;

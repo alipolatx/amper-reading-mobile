@@ -15,7 +15,10 @@ import { RootStackParamList } from '../types';
 import { storageService } from '../utils/storage';
 import { apiService } from '../services/api';
 
-type LoginScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Login'>;
+type LoginScreenNavigationProp = NativeStackNavigationProp<
+  RootStackParamList,
+  'Login'
+>;
 
 interface LoginScreenProps {
   navigation: LoginScreenNavigationProp;
@@ -25,31 +28,33 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
   const [username, setUsername] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-
   const validateUsername = (value: string): boolean => {
     // Username validation rules
     if (!value || value.trim().length === 0) {
       Alert.alert('Hata', 'Kullanıcı adı boş olamaz');
       return false;
     }
-    
+
     if (value.trim().length < 3) {
       Alert.alert('Hata', 'Kullanıcı adı en az 3 karakter olmalıdır');
       return false;
     }
-    
+
     if (value.trim().length > 20) {
       Alert.alert('Hata', 'Kullanıcı adı en fazla 20 karakter olabilir');
       return false;
     }
-    
+
     // Only allow alphanumeric characters and underscores
     const usernameRegex = /^[a-zA-Z0-9_]+$/;
     if (!usernameRegex.test(value.trim())) {
-      Alert.alert('Hata', 'Kullanıcı adı sadece harf, rakam ve alt çizgi içerebilir');
+      Alert.alert(
+        'Hata',
+        'Kullanıcı adı sadece harf, rakam ve alt çizgi içerebilir'
+      );
       return false;
     }
-    
+
     return true;
   };
 
@@ -59,11 +64,11 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
     }
 
     setIsLoading(true);
-    
+
     try {
       // Check if API is available
       const isApiHealthy = await apiService.healthCheck();
-      
+
       if (!isApiHealthy) {
         Alert.alert(
           'Bağlantı Hatası',
@@ -75,10 +80,9 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
 
       // Save username to storage
       await storageService.saveUsername(username.trim());
-      
+
       // Navigate to products screen
       navigation.replace('Products');
-      
     } catch (error) {
       console.error('Login error:', error);
       Alert.alert(
@@ -95,10 +99,11 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
     setUsername(value);
   };
 
-  const isFormValid = username.trim().length >= 3 && username.trim().length <= 20;
+  const isFormValid =
+    username.trim().length >= 3 && username.trim().length <= 20;
 
   return (
-    <KeyboardAvoidingView 
+    <KeyboardAvoidingView
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
@@ -118,7 +123,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
             <TextInput
               style={[
                 styles.input,
-                username.trim().length > 0 && !isFormValid && styles.inputError
+                username.trim().length > 0 && !isFormValid && styles.inputError,
               ]}
               value={username}
               onChangeText={handleUsernameChange}
@@ -130,13 +135,13 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
               returnKeyType="done"
               onSubmitEditing={handleLogin}
               editable={!isLoading}
-                         />
+            />
           </View>
 
           <TouchableOpacity
             style={[
               styles.loginButton,
-              (!isFormValid || isLoading) && styles.loginButtonDisabled
+              (!isFormValid || isLoading) && styles.loginButtonDisabled,
             ]}
             onPress={handleLogin}
             disabled={!isFormValid || isLoading}
@@ -248,4 +253,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default LoginScreen; 
+export default LoginScreen;

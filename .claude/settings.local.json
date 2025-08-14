@@ -1,9 +1,6 @@
 {
   "permissions": {
-    "allow": [
-      "Bash(eas build:*)",
-      "Bash(eas update:*)"
-    ],
+    "allow": ["Bash(eas build:*)", "Bash(eas update:*)"],
     "deny": []
   }
 }

@@ -1,4 +1,4 @@
-import { API_BASE_URL, API_TIMEOUT } from '@env';
+import { API_TIMEOUT, API_BASE_URL } from '@env';
 
 // Simple environment configuration
 export const ENV = {

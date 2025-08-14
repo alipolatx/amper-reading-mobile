@@ -50,6 +50,7 @@ export interface AppState {
 
 // Navigation Types
 export type RootStackParamList = {
+  Login: undefined;
   Products: undefined;
   ProductDetail: { product: Product };
   UserSelection: { product: Product; selectedSensor: string };

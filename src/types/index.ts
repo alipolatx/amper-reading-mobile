@@ -11,7 +11,6 @@ export interface Product {
 export interface AmperReading {
   _id: string;
   username: string;
-  timestamp: string;
   amper: number;
   createdAt: string;
 }
@@ -25,6 +24,28 @@ export interface UserStats {
   minCount: number;
   midCount: number;
   maxCount: number;
+}
+
+export interface StatsApiResponse {
+  product: {
+    id: string;
+    name: string;
+    sensors: string[];
+  };
+  username: string;
+  sensor: string;
+  statistics: {
+    totalReadings: number;
+    minAmper: number;
+    maxAmper: number;
+    avgAmper: number;
+    categories: {
+      off: number;
+      low: number;
+      mid: number;
+      high: number;
+    };
+  };
 }
 
 export interface ApiResponse<T> {

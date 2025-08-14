@@ -1,5 +1,5 @@
 import axios, { AxiosInstance } from 'axios';
-import { AmperReading, UserStats, ApiResponse, Product } from '../types';
+import { AmperReading, UserStats, ApiResponse, Product, StatsApiResponse } from '../types';
 import { ENV } from '../config/env';
 
 class ApiService {
@@ -138,7 +138,7 @@ class ApiService {
   // Get all readings with pagination
   async getAllReadings(
     username: string,
-    limit: number = 50,
+    limit: number = 10,
     page: number = 1
   ): Promise<{
     readings: AmperReading[];
@@ -209,7 +209,7 @@ class ApiService {
       return response.data.data.users.map((user) => ({
         username: user.username,
         readingCount: user.totalReadings,
-        lastReading: user.latestReading?.timestamp,
+        lastReading: user.latestReading?.createdAt,
       }));
     } catch (error) {
       console.error('Error fetching product users:', error);
@@ -255,7 +255,7 @@ class ApiService {
       return response.data.data.users.map((user) => ({
         username: user.username,
         readingCount: user.totalReadings,
-        lastReading: user.latestReading?.timestamp,
+        lastReading: user.latestReading?.createdAt,
       }));
     } catch (error) {
       console.error('Error fetching product users by sensor:', error);
@@ -263,7 +263,7 @@ class ApiService {
     }
   }
 
-  // Get readings for a specific product, user and sensor
+  // Get readings for a specific product, user and sensor with pagination
   async getProductUserReadings(
     productId: string,
     username: string,
@@ -273,11 +273,19 @@ class ApiService {
       limit?: number;
       page?: number;
     }
-  ): Promise<AmperReading[]> {
+  ): Promise<{
+    readings: AmperReading[];
+    pagination: {
+      page: number;
+      limit: number;
+      total: number;
+      pages: number;
+    };
+  }> {
     try {
-      const { timeRange = '24h', limit = 50, page = 1 } = options || {};
+      const { timeRange = '24h', limit = 10, page = 1 } = options || {};
       console.log(
-        `🔍 Fetching readings for product: ${productId}, user: ${username}, sensor: ${sensor}, timeRange: ${timeRange}`
+        `🔍 Fetching readings for product: ${productId}, user: ${username}, sensor: ${sensor}, timeRange: ${timeRange}, page: ${page}`
       );
 
       const params = new URLSearchParams({
@@ -307,9 +315,66 @@ class ApiService {
         );
       }
 
-      return response.data.data.readings;
+      return {
+        readings: response.data.data.readings,
+        pagination: response.data.data.pagination,
+      };
     } catch (error) {
       console.error('❌ Error fetching product user readings:', error);
+      throw error;
+    }
+  }
+
+  // Get statistics for a specific product, user and sensor (all data, not paginated)
+  async getProductUserStats(
+    productId: string,
+    username: string,
+    sensor: string,
+    timeRange: string = '24h'
+  ): Promise<UserStats> {
+    try {
+      console.log(
+        `📊 Fetching stats for product: ${productId}, user: ${username}, sensor: ${sensor}, timeRange: ${timeRange}`
+      );
+
+      const params = new URLSearchParams({
+        sensor,
+        timeRange,
+      });
+
+      const response = await this.api.get<ApiResponse<StatsApiResponse>>(
+        `/api/products/${productId}/users/${username}/readings/stats?${params}`
+      );
+
+      if (!response.data.success) {
+        throw new Error(
+          response.data.message || 'Failed to fetch product user stats'
+        );
+      }
+
+      // Map the new API response to our UserStats interface
+      // Note: API uses different ranges than our UI, but we'll use the counts as-is
+      const statsData = response.data.data;
+      const stats = statsData.statistics;
+      
+      const highAmpCount = stats.categories.low + stats.categories.mid + stats.categories.high;
+      const lowAmpCount = stats.categories.off;
+      const percentage = stats.totalReadings > 0 ? (highAmpCount / stats.totalReadings) * 100 : 0;
+
+      return {
+        totalReadings: stats.totalReadings,
+        highAmpCount,
+        lowAmpCount,
+        percentage,
+        offCount: stats.categories.off,
+        minCount: stats.categories.low,
+        midCount: stats.categories.mid,
+        maxCount: stats.categories.high,
+      };
+    } catch (error) {
+      console.error('❌ Error fetching product user stats:', error);
+      // Fallback: calculate stats from paginated data if stats endpoint doesn't exist
+      console.log('📋 Falling back to calculating stats from readings data...');
       throw error;
     }
   }

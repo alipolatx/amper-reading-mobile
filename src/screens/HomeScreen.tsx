@@ -18,6 +18,7 @@ import { RouteProp } from '@react-navigation/native';
 import { RootStackParamList, UserStats, AmperReading } from '../types';
 import { apiService } from '../services/api';
 import CircularProgress from '../components/CircularProgress';
+import Pagination from '../components/Pagination';
 
 // Helper function to get amper status and style
 const getAmperStatus = (amper: number) => {
@@ -65,7 +66,7 @@ const TableRow = ({ item }: { item: AmperReading }) => {
   return (
     <View style={styles.tableRow}>
       <Text style={styles.tableCell}>
-        {new Date(item.timestamp).toLocaleString('tr-TR', { hour12: false })}
+        {new Date(item.createdAt).toLocaleString('tr-TR', { hour12: false })}
       </Text>
       <View style={styles.amperCell}>
         <Text
@@ -111,60 +112,94 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation, route }) => {
   const [error, setError] = useState<string | null>(null);
   const [showTimeFilter, setShowTimeFilter] = useState(false);
   const [timeRange, setTimeRange] = useState<string>('24h');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pagination, setPagination] = useState<{
+    page: number;
+    limit: number;
+    total: number;
+    pages: number;
+  } | null>(null);
 
   // Auto-refresh interval (60 seconds)
   const REFRESH_INTERVAL = 60000;
 
-  const fetchData = useCallback(
+  const calculateFallbackStats = useCallback((readings: AmperReading[], totalCount: number) => {
+    // Warning: This is fallback stats based only on current page data
+    // The percentages will be inaccurate since we only have a subset of data
+    const filteredReadings = readings; // Use all readings without filtering
+    const totalReadings = filteredReadings.length;
+    // Use original categorization ranges (22, 5, 3, 1)
+    const offCount = filteredReadings.filter((r) => r.amper < 1).length;
+    const minCount = filteredReadings.filter(
+      (r) => r.amper >= 1 && r.amper < 3
+    ).length;
+    const midCount = filteredReadings.filter(
+      (r) => r.amper >= 3 && r.amper < 5
+    ).length;
+    const maxCount = filteredReadings.filter(
+      (r) => r.amper >= 5
+    ).length;
+
+    const activeCount = minCount + midCount + maxCount;
+    // Note: percentage is based on current page only, not total data
+    const percentage = totalReadings > 0 ? (activeCount / totalReadings) * 100 : 0;
+
+    return {
+      totalReadings: totalCount, // Use total from pagination
+      highAmpCount: activeCount, // From current page only
+      lowAmpCount: offCount, // From current page only
+      percentage, // Inaccurate - based on current page only
+      offCount, // From current page only
+      minCount, // From current page only
+      midCount, // From current page only
+      maxCount, // From current page only
+    };
+  }, []);
+
+  const fetchStats = useCallback(
     async (showLoading = true) => {
+      // Stats loading state is handled by main loading state
+
+      try {
+        // Try to fetch stats from dedicated endpoint
+        const statsData = await apiService.getProductUserStats(
+          product._id,
+          username,
+          selectedSensor,
+          timeRange
+        );
+        setStats(statsData);
+        return true; // Success
+      } catch (error) {
+        console.log('Stats endpoint not available, will calculate from readings');
+        return false; // Failed, need fallback
+      }
+    },
+    [product._id, username, selectedSensor, timeRange]
+  );
+
+  const fetchReadings = useCallback(
+    async (page = 1, showLoading = true) => {
       if (showLoading) {
         setIsLoading(true);
       }
       setError(null);
 
       try {
-        // Fetch readings for the specific product, user and sensor
-        const readingsData = await apiService.getProductUserReadings(
+        // Fetch paginated readings
+        const { readings, pagination: paginationData } = await apiService.getProductUserReadings(
           product._id,
           username,
           selectedSensor,
-          { timeRange }
+          { timeRange, limit: 10, page }
         );
 
-        // Filter out readings over 22A
-        const filteredReadings = readingsData.filter(
-          (reading: AmperReading) => reading.amper <= 22
-        );
+        // Use all readings (no filtering by amper value)
+        const filteredReadings = readings;
 
-        // Calculate stats from filtered readings using the 4-tier system
-        const totalReadings = filteredReadings.length;
-        const offCount = filteredReadings.filter((r) => r.amper <= 1).length;
-        const minCount = filteredReadings.filter(
-          (r) => r.amper >= 1 && r.amper < 3
-        ).length;
-        const midCount = filteredReadings.filter(
-          (r) => r.amper >= 3 && r.amper < 5
-        ).length;
-        const maxCount = filteredReadings.filter(
-          (r) => r.amper >= 5 && r.amper <= 22
-        ).length;
-
-        // Percentage of active readings (min + mid + max)
-        const activeCount = minCount + midCount + maxCount;
-        const percentage =
-          totalReadings > 0 ? (activeCount / totalReadings) * 100 : 0;
-
-        setStats({
-          totalReadings,
-          highAmpCount: activeCount,
-          lowAmpCount: offCount,
-          percentage,
-          offCount,
-          minCount,
-          midCount,
-          maxCount,
-        });
         setRecentReadings(filteredReadings);
+        setPagination(paginationData);
+        setCurrentPage(page);
         setLastSync(new Date().toISOString());
       } catch (error) {
         setError('Veriler yüklenirken bir hata oluştu');
@@ -172,7 +207,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation, route }) => {
           'Veri Hatası',
           'Sunucudan veri alınamadı. Lütfen internet bağlantınızı kontrol edin.',
           [
-            { text: 'Tekrar Dene', onPress: () => fetchData() },
+            { text: 'Tekrar Dene', onPress: () => fetchReadings(page) },
             { text: 'Tamam', style: 'cancel' },
           ]
         );
@@ -181,13 +216,68 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation, route }) => {
         setIsRefreshing(false);
       }
     },
-    [product._id, username, timeRange]
+    [product._id, username, selectedSensor, timeRange]
+  );
+
+  const fetchData = useCallback(
+    async (page = 1, showLoading = true) => {
+      if (showLoading) {
+        setIsLoading(true);
+      }
+      setError(null);
+
+      try {
+        // First try to fetch stats
+        const statsSuccess = await fetchStats(showLoading);
+        
+        // Fetch readings
+        const { readings, pagination: paginationData } = await apiService.getProductUserReadings(
+          product._id,
+          username,
+          selectedSensor,
+          { timeRange, limit: 10, page }
+        );
+
+        // Use all readings (no filtering by amper value)
+        const filteredReadings = readings;
+
+        setRecentReadings(filteredReadings);
+        setPagination(paginationData);
+        setCurrentPage(page);
+        setLastSync(new Date().toISOString());
+
+        // If stats endpoint failed, calculate fallback stats
+        if (!statsSuccess) {
+          console.warn('⚠️ Using fallback stats calculation - percentages may be inaccurate');
+          const fallbackStats = calculateFallbackStats(filteredReadings, paginationData.total);
+          setStats(fallbackStats);
+        }
+      } catch (error) {
+        setError('Veriler yüklenirken bir hata oluştu');
+        Alert.alert(
+          'Veri Hatası',
+          'Sunucudan veri alınamadı. Lütfen internet bağlantınızı kontrol edin.',
+          [
+            { text: 'Tekrar Dene', onPress: () => fetchData(page, showLoading) },
+            { text: 'Tamam', style: 'cancel' },
+          ]
+        );
+      } finally {
+        setIsLoading(false);
+        setIsRefreshing(false);
+      }
+    },
+    [fetchStats, calculateFallbackStats, product._id, username, selectedSensor, timeRange]
   );
 
   const handleRefresh = useCallback(() => {
     setIsRefreshing(true);
-    fetchData(false);
-  }, [fetchData]);
+    fetchData(currentPage, false);
+  }, [fetchData, currentPage]);
+
+  const handlePageChange = useCallback((page: number) => {
+    fetchReadings(page, true);
+  }, [fetchReadings]);
 
   // Initial data fetch
   useEffect(() => {
@@ -198,11 +288,11 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation, route }) => {
   useEffect(() => {
     const interval = setInterval(() => {
       if (!isLoading && !isRefreshing) {
-        fetchData(false);
+        fetchData(currentPage, false);
       }
     }, REFRESH_INTERVAL);
     return () => clearInterval(interval);
-  }, [fetchData, isLoading, isRefreshing]);
+  }, [fetchData, isLoading, isRefreshing, currentPage]);
 
   // Header + Progress + Sync Info + Error + Table Header
   const renderHeader = () => (
@@ -262,7 +352,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation, route }) => {
       <View style={styles.tableSection}>
         <Text style={styles.title}>Amper Verileri</Text>
         <Text style={styles.subtitle}>
-          {recentReadings.length} okuma bulundu
+          {pagination ? `${pagination.total} okuma bulundu (Sayfa ${pagination.page}/${pagination.pages})` : `${recentReadings.length} okuma bulundu`}
         </Text>
         <View style={styles.tableRowHeader}>
           <Text style={[styles.tableCell, styles.headerCell]}>Tarih-Saat</Text>
@@ -283,7 +373,8 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation, route }) => {
   const handleTimeRangeSelect = (range: string) => {
     setTimeRange(range);
     setShowTimeFilter(false);
-    fetchData();
+    setCurrentPage(1); // Reset to first page when changing time range
+    fetchData(1, true);
   };
 
   const timeRangeOptions = [
@@ -325,7 +416,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation, route }) => {
       <FlatList
         data={recentReadings}
         renderItem={({ item }) => <TableRow item={item} />}
-        keyExtractor={(item) => item._id || item.timestamp}
+        keyExtractor={(item) => item._id || item.createdAt}
         ListHeaderComponent={renderHeader}
         refreshControl={
           <RefreshControl
@@ -345,6 +436,17 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation, route }) => {
                 ESP32 cihazından veri gelmeye başladığında burada görünecek
               </Text>
             </View>
+          ) : null
+        }
+        ListFooterComponent={
+          pagination && pagination.pages > 1 ? (
+            <Pagination
+              currentPage={currentPage}
+              totalPages={pagination.pages}
+              onPageChange={handlePageChange}
+              totalItems={pagination.total}
+              itemsPerPage={pagination.limit}
+            />
           ) : null
         }
         contentContainerStyle={styles.listContent}

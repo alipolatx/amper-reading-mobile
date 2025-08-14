@@ -104,8 +104,8 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation, route }) => {
     setError(null);
 
     try {
-      // Fetch readings for the specific product and user
-      const readingsData = await apiService.getProductUserReadings(product._id, username, timeRange);
+      // Fetch readings for the specific product, user and sensor
+      const readingsData = await apiService.getProductUserReadings(product._id, username, selectedSensor, { timeRange });
 
       // Filter out readings over 22A
       const filteredReadings = readingsData.filter((reading: AmperReading) => reading.amper <= 22);

@@ -18,7 +18,6 @@ class ApiService {
     this.api.interceptors.request.use(
       (config) => {
         console.log(`🚀 API Request: ${config.method?.toUpperCase()} ${config.url}`);
-        console.log('🔗 Full URL:', (config.baseURL || '') + (config.url || ''));
         return config;
       },
       (error) => {
@@ -181,10 +180,65 @@ class ApiService {
     }
   }
 
-  // Get readings for a specific product and user
-  async getProductUserReadings(productId: string, username: string, timeRange: string = '24h'): Promise<AmperReading[]> {
+  // Get users for a specific product filtered by sensor
+  async getProductUsersBySensor(productId: string, sensor: string): Promise<Array<{
+    username: string;
+    readingCount: number;
+    lastReading?: string;
+  }>> {
     try {
-      console.log(`🔍 Fetching readings for product: ${productId}, user: ${username}, timeRange: ${timeRange}`);
+      const params = new URLSearchParams({
+        sensor
+      });
+      
+      const response = await this.api.get<ApiResponse<{
+        product: Product;
+        users: Array<{
+          username: string;
+          totalReadings: number;
+          averageAmper: number;
+          latestReading?: any;
+        }>;
+      }>>(`/api/products/${productId}/sensor?${params}`);
+      
+      if (!response.data.success) {
+        throw new Error(response.data.message || 'Failed to fetch product users by sensor');
+      }
+
+      // Transform the response to match expected format
+      return response.data.data.users.map(user => ({
+        username: user.username,
+        readingCount: user.totalReadings,
+        lastReading: user.latestReading?.timestamp
+      }));
+    } catch (error) {
+      console.error('Error fetching product users by sensor:', error);
+      throw error;
+    }
+  }
+
+  // Get readings for a specific product, user and sensor
+  async getProductUserReadings(
+    productId: string, 
+    username: string, 
+    sensor: string,
+    options?: {
+      timeRange?: string;
+      limit?: number;
+      page?: number;
+    }
+  ): Promise<AmperReading[]> {
+    try {
+      const { timeRange = '24h', limit = 50, page = 1 } = options || {};
+      console.log(`🔍 Fetching readings for product: ${productId}, user: ${username}, sensor: ${sensor}, timeRange: ${timeRange}`);
+      
+      const params = new URLSearchParams({
+        sensor,
+        limit: limit.toString(),
+        page: page.toString(),
+        ...(timeRange && { timeRange })
+      });
+      
       const response = await this.api.get<ApiResponse<{
         product: Product;
         username: string;
@@ -195,10 +249,8 @@ class ApiService {
           total: number;
           pages: number;
         };
-      }>>(`/api/products/${productId}/users/${username}?timeRange=${timeRange}`);
-      
-      console.log('📊 Product user readings response:', response.data);
-      
+      }>>(`/api/products/${productId}/users/${username}/readings?${params}`);
+            
       if (!response.data.success) {
         throw new Error(response.data.message || 'Failed to fetch product user readings');
       }

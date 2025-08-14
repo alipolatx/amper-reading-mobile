@@ -50,7 +50,7 @@ const UserSelectionScreen: React.FC<UserSelectionScreenProps> = ({ navigation, r
     setError(null);
 
     try {
-      const users = await apiService.getProductUsers(product._id);
+      const users = await apiService.getProductUsersBySensor(product._id, selectedSensor);
       setUserGroups(users.sort((a, b) => a.username.localeCompare(b.username)));
     } catch (error) {
       setError('Kullanıcı verileri yüklenirken bir hata oluştu');

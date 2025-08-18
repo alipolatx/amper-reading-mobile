@@ -68,15 +68,15 @@ const TableRow = ({ item }: { item: AmperReading }) => {
       <Text style={styles.tableCell}>
         {new Date(item.createdAt).toLocaleString('tr-TR', { hour12: false })}
       </Text>
-      <View style={styles.amperCell}>
-        <Text
-          style={[
-            styles.tableCell,
-            styles[amperStatus.style as keyof typeof styles],
-          ]}
-        >
-          {item.amper.toFixed(1)}A
-        </Text>
+     // <View style={styles.amperCell}>
+     //   <Text
+      //    style={[
+         //   styles.tableCell,
+       //     styles[amperStatus.style as keyof typeof styles],
+     //     ]}
+        // >
+       //   {item.amper.toFixed(1)}A
+      //  </Text>
         <Text
           style={[
             styles.statusText,

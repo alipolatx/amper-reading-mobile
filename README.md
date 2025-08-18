@@ -198,12 +198,6 @@ npm run lint
 
 Bu proje MIT lisansı altında lisanslanmıştır.
 
-## 📞 İletişim
-
-- Proje Sahibi: [İsim]
-- Email: [email]
-- GitHub: [github-username]
-
 ---
 
 **Not**: Bu uygulama ESP32 cihazından gelen amper verilerini görselleştirmek için tasarlanmıştır. Backend API'si ayrı bir projede bulunmaktadır.
